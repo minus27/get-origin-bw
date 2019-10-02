@@ -224,7 +224,7 @@ function clearData() {
   $('#service-data tbody').html('');
   $('#output').html('');
   updateServiceTotals(0,0,true);
-  $('.input-id-type-dependent:read-only').val('');
+  $('.input-id-type-dependent[readonly]').val('');
 }
 function changeBytesFormat() {
   apiData.bytes_format = $('#bytesFormat').val();
