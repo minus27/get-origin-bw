@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Get Origin BW</title>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="icon" href="/img/fastly_black_stopwatch.png">
+
+    <!-- Bootstrap CSS -->
+    <!--
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css" />
+    -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/css/bootstrap-datepicker.min.css" />
+    <link rel="stylesheet" href="/css/my_styles.css"><style type="text/css">
+    </style>
+    <script>
+      function initialize() {
+        // Fields...
+        $( '#idType' ).change(function() { changeInputIdType(); }).change();
+        $( "#fromDate" ).datepicker({
+          format: 'yyyy-mm-dd',
+          endDate: daysFromNow(0),
+          autoclose: true,
+        });
+        $( "#toDate" ).datepicker({
+          format: 'yyyy-mm-dd',
+          endDate: daysFromNow(0),
+          autoclose: true,
+        });
+        $( '#fromDate' ).datepicker( "setDate", daysFromNow(-30)).attr("previous-value",$( "#fromDate" ).val());
+        $( '#toDate' ).datepicker( "setDate", daysFromNow(-1)).attr("previous-value",$( "#toDate" ).val());
+        $( '.date-picker' ).change(function() { checkDates(this); });
+        $( '#elapsedDays' ).val(elapsedDays());
+        $( '#averageDivisor' ).change(function(){ updateAverageDivisor(); }).change();
+        initializeAverageDivisor();
+        $( '#bytesFormat' ).change(function() { changeBytesFormat(); }).change();
+        $( '#shieldingMultiplier' ).change(function() { updateShieldingMultiplier(); });
+        $( '#export-footer' ).change(function(){apiData.export_footer=$(this).prop('checked');}).change();
+        $( '.required-input' ).change(function() { checkInputs(this); }).keyup(function() { checkInputs(this); });
+        // Buttons...
+        $( '#get-data' ).click(function() { stateTransition(0); });
+        $( '#halt-get-data' ).click(function() { $('#kill-switch').prop("checked",true); });
+        $( '#export-data' ).click(function() { exportData(); });
+        $( '#clear-data' ).click(function() { clearData(); });
+        $( '#reload-page' ).click(function() { location.reload(); });
+        // Tables...
+        $( '.select-service' ).click(function() { updateSelectedServices(this); });
+        clearData();
+        addSortLinks();
+        $( '.results.hidden' ).removeClass( 'hidden' );
+      }
+    </script>
+  </head>
+  <body onload="initialize()">
+    <header ip-blocked="" demo-running="false">
+      <nav class="navbar navbar-dark bg-dark">
+        <a class="navbar-brand" href="#">
+          <img src="/img/fastly_white_stopwatch.png" alt="">
+          <span>Get Origin Bandwidth</span>
+        </a>
+      </nav>
+    </header>
+    <section class="user-inputs">
+      <div class="container">
+
+        <div class="row">
+            <div class="col-6 px-3">
+                <div class="form-group mx-0 row border rounded">
+                    <label class="col-sm-4 col-form-label bg-light border-right">API Key</label>
+                    <div class="col-sm-8 px-2">
+                      <input type="password" name="password" class="form-control required-input" id="apiKey">
+                    </div>
+              </div>  
+            </div>
+            <div class="col-6 px-3">
+                <div class="form-group mx-0 row border rounded pseudo-readonly">
+                    <label class="col-sm-4 col-form-label bg-light border-right">API Key User Role</label>
+                    <div class="col-sm-8 px-2">
+                      <input type="text" class="form-control" id="userRole" readonly="readonly">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-6 px-3">
+                <div class="form-group mx-0 row border rounded">
+                    <label class="col-sm-4 col-form-label bg-light border-right">Input ID Type</label>
+                    <div class="col-sm-8 px-2">
+                      <select class="form-control selectpicker" id="idType">
+                        <option value="customer">Customer ID</option>
+                        <option value="service" selected>Service ID</option>
+                      </select>
+                    </div>
+              </div>  
+            </div>
+            <div class="col-6 px-3"></div>
+        </div>
+
+        <div class="row">
+            <div class="col-6 px-3">
+                <div class="form-group mx-0 row border rounded">
+                    <label class="col-sm-4 col-form-label bg-light border-right">Service ID</label>
+                    <div class="col-sm-8 px-2">
+                      <input type="text" class="form-control input-id-type-dependent" id="serviceId" readonly="readonly">
+                    </div>
+              </div>  
+            </div>
+            <div class="col-6 px-3">
+                <div class="form-group mx-0 row border rounded pseudo-readonly">
+                    <label class="col-sm-4 col-form-label bg-light border-right">Service Name</label>
+                    <div class="col-sm-8 px-2">
+                      <input type="text" class="form-control input-id-type-dependent text-truncate" id="serviceName" readonly="readonly">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-6 px-3">
+                <div class="form-group mx-0 row border rounded">
+                    <label class="col-sm-4 col-form-label bg-light border-right">Customer ID</label>
+                    <div class="col-sm-8 px-2">
+                      <input type="text" class="form-control input-id-type-dependent" id="customerId" readonly="readonly">
+                    </div>
+              </div>  
+            </div>
+            <div class="col-6 px-3">
+                <div class="form-group mx-0 row border rounded pseudo-readonly">
+                    <label class="col-sm-4 col-form-label bg-light border-right">Customer Name</label>
+                    <div class="col-sm-8 px-2">
+                      <input type="text" class="form-control input-id-type-dependent text-truncate" id="customerName" readonly="readonly">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-6 px-3">
+                <div class="form-group mx-0 row border rounded">
+                    <label class="col-sm-4 col-form-label bg-light border-right">From Date</label>
+                    <div class="col-sm-8 px-2">
+                      <input type="text" class="form-control date-picker required-input hasDatepicker" id="fromDate" readonly="readonly">
+                    </div>
+              </div>  
+            </div>
+            <div class="col-6 px-3">
+                <div class="form-group mx-0 row border rounded">
+                    <label class="col-sm-4 col-form-label bg-light border-right">To Date</label>
+                    <div class="col-sm-8 px-2">
+                      <input type="text" class="form-control date-picker required-input hasDatepicker" id="toDate" readonly="readonly">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-6 px-3">
+                <div class="form-group mx-0 row border rounded pseudo-readonly">
+                    <label class="col-sm-4 col-form-label bg-light border-right">Days of Data</label>
+                    <div class="col-sm-8 px-2">
+                      <input type="text" class="form-control" id="elapsedDays" readonly="readonly">
+                    </div>
+              </div>  
+            </div>
+            <div class="col-6 px-3">
+                <div class="form-group mx-0 row border rounded">
+                    <label class="col-sm-4 col-form-label bg-light border-right" for="averageDivisor">Average Divisor</label>
+                    <div class="col-sm-8 px-2">
+                      <input type="number" class="form-control required-input" id="averageDivisor" value="1" min="1" step="1">
+                    </div>
+              </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-6 px-3">
+                <div class="form-group mx-0 row border rounded">
+                    <label class="col-sm-4 col-form-label bg-light border-right">Bandwidth Format</label>
+                    <div class="col-sm-8 px-2">
+                      <select class="form-control selectpicker" id="bytesFormat">
+                        <option value="abbreviated" selected>Abbreviated (1.235 TB)</option>
+                        <option value="comma-separated">Comma Separated (1,234,567,890)</option>
+                        <option value="integer">Integer (1234567890)</option>
+                      </select>
+                    </div>
+              </div>  
+            </div>
+            <div class="col-6 px-3">
+                <div class="form-group mx-0 row border rounded">
+                    <label class="col-sm-4 col-form-label bg-light border-right">Adjust for Shielding</label>
+                    <div class="col-sm-8 px-2">
+                      <select class="form-control selectpicker" id="shieldingMultiplier">
+                        <option value="1">Count all Shield Node origin bandwidth</option>
+                        <option value="0.5" selected>Count half of Shield Node origin bandwidth</option>
+                      </select>
+                    </div>
+              </div>
+          </div>
+        </div>
+
+        <div class="row">
+            <div class="col-6 px-3">
+                <div class="form-group mx-0 row border rounded">
+                    <label class="col-sm-4 col-form-label bg-light border-right">Export Footer</label>
+                    <div class="col-sm-8 px-2">
+                      <div class="custom-control custom-checkbox">
+                        <div class="form-control">
+                          <input type="checkbox" class="custom-control-input" id="export-footer" checked>
+                          <label class="custom-control-label" for="export-footer">Append summary information</label>
+                        </div>
+                      </div>
+                    </div>
+              </div>  
+            </div>
+            <div class="col-6 px-3"></div>
+        </div>
+
+      </div>
+    </section>
+    <section>
+      <div class="form-group row">
+        <div class="col text-center">
+          <button type="button" class="btn btn-primary normally-not-hidden" id="get-data" disabled>Get Data</button>
+          <button type="button" class="btn btn-danger hidden" id="halt-get-data">Halt Getting Data</button>
+          <button type="button" class="btn btn-secondary normally-not-hidden" id="export-data">Export Selected Data</button>
+          <button type="button" class="btn btn-secondary normally-not-hidden" id="clear-data">Clear Data</button>
+          <button type="button" class="btn btn-secondary normally-not-hidden" id="reload-page">Reload Page</button>
+          <input type="checkbox" class="hidden" id="kill-switch" title="Kill Switch">
+          <a download="origin_bw.csv" class="hidden" id="hiddenDownloadLink">Download</a>
+        </div>
+      </div>
+      <div class="form-group row">
+        <div class="col-sm-12 form-progress-holder">
+          <div class="progress">
+            <div class="progress-bar progress-bar-striped progress-bar-animated customer-progress-bar" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="results hidden">
+      <div class="card">
+        <div class="table-responsive">
+          <table class="table table-bordered table-striped table-sm" id="service-totals">
+            <thead class="thead-darkish">
+              <tr>
+                <th scope="col" csv>Count of Services Selected</th>
+                <th scope="col" class="total abbreviated">Total Origin Bandwidth</th>
+                <th scope="col" class="total comma-separated">Total Origin Bandwidth</th>
+                <th scope="col" class="total integer">Total Origin Bandwidth</th>
+                <th scope="col" class="average abbreviated">Average Total Origin Bandwidth</th>
+                <th scope="col" class="average comma-separated">Average Total Origin Bandwidth</th>
+                <th scope="col" class="average integer">Average Total Origin Bandwidth</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="count" csv>Column 1</td>
+                <td class="total integer">Column 2</td>
+                <td class="total abbreviated">Column 3</td>
+                <td class="total comma-separated">Column 4</td>
+                <td class="average integer">Column 5</td>
+                <td class="average abbreviated">Column 6</td>
+                <td class="average comma-separated">Column 7</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+    <section class="results hidden">
+      <div class="card">
+        <div class="table-responsive">
+          <table class="table table-bordered table-striped table-sm" id="service-data">
+            <thead class="thead-darkish">
+              <tr>
+                <th scope="col"><input type="checkbox" class="select-service" value="" checked></th>
+                <th scope="col" sort-field="service-id" csv>Service ID</th>
+                <th scope="col" sort-field="service-name" csv>Service Name</th>
+                <th scope="col" sort-field="origin-bandwidth" class="total abbreviated">Origin Bandwidth</th>
+                <th scope="col" sort-field="origin-bandwidth" class="total comma-separated">Origin Bandwidth</th>
+                <th scope="col" sort-field="origin-bandwidth" class="total integer">Origin Bandwidth</th>
+                <th scope="col" class="average abbreviated">Average Origin Bandwidth</th>
+                <th scope="col" class="average comma-separated">Average Origin Bandwidth</th>
+                <th scope="col" class="average integer">Average Origin Bandwidth</th>
+                <th scope="col" sort-field="shielding" csv>Shielding</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+    <section class="hidden">
+      <pre class="pre-scrollable border rounded mb-0" style="padding: 6px 12px;" id="output">&nbsp;</pre>
+    </section>
+    <!-- Button to Open the Modal -->
+    <button id="modal-button" type="button" class="btn btn-danger hidden bs-alert" data-toggle="modal" data-target="#myModal">
+      Open modal
+    </button>
+    <!-- The Modal -->
+    <div class="modal fade" id="myModal">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title">Modal Heading</h4>
+            <button type="button" class="close hidden" data-dismiss="modal">&times;</button>
+          </div>
+          <div class="modal-body">
+            Modal body..
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-danger bs-alert" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS, then others... -->
+    <!--
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.15.0/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
+    -->
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/popper.min.js"></script>
+    <script src="/js/bootstrap.min.js"></script>
+    <script src="/js/bootstrap-datepicker.min.js"></script>
+    <script src="/js/my_scripts.js" defer></script>
+  </body>
+</html>

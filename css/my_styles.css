@@ -1,0 +1,149 @@
+:root {
+  --stopwatch-size: 30px;
+}
+
+/* https://stackoverflow.com/questions/1457849/how-to-remove-the-border-highlight-on-an-input-text-element */
+button:focus {
+    outline: none;
+}
+/* https://stackoverflow.com/questions/16283017/stop-chromes-click-and-hold-drag-image-default-behavior */
+* {
+  -webkit-user-drag: none;
+}
+
+/* Navbar Styles */
+a.navbar-brand {
+  display: flex;
+  align-items: center;
+  cursor: default;
+}
+a.navbar-brand img {
+  height: var(--stopwatch-size);
+  width: var(--stopwatch-size);
+}
+a.navbar-brand span {
+  display: inline-block;
+  padding-left: 1em;
+}
+.nav-button {
+  text-align: right;
+}
+
+
+body {
+  font-family: "Benton Sans", "Helvetica Neue", helvetica, arial, sans-serif;
+}
+section {
+  padding: 16px 16px 0 16px;
+}
+#fromDate:read-only:not([disabled]), #toDate:read-only:not([disabled]) {
+  background-color: white;
+}
+label.col-form-label {
+  font-weight: bold;
+  text-align: center;
+}
+.hidden {
+  display: none;
+}
+pre {
+  border: 1px solid black;
+}
+thead th {
+  text-align: center;
+}
+tbody td {
+  text-align: center;
+}
+table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+thead.thead-darkish {
+  color: #fff;
+  background-color: #343a40;
+}
+thead.thead-darkish tr th:first-child{
+  border-radius:3px 0 0 0 !important;
+}
+thead.thead-darkish tr th:last-child{
+  border-radius:0 3px 0 0 !important;
+}
+.form-check-holder {
+  padding: 0px 15px;
+}
+.form-check-inline {
+  padding: 6px 12px;
+}
+
+.form-progress-holder {
+  padding-top: 11px;
+}
+
+/*
+ *  HIDE / SHOW "Total Bytes" COLUMNS
+ */
+.abbreviated, .comma-separated, .integer {
+  display:none;
+}
+[bytes-format~="abbreviated"] .abbreviated {
+  display: table-cell;
+}
+[bytes-format~="comma-separated"] .comma-separated {
+  display: table-cell;
+}
+[bytes-format~="integer"] .integer {
+  display: table-cell;
+}
+
+/*
+ *  TWEAK FORMATTING OF INPUT GROUPS WHEN INPUTS/SELECTS ARE NEXT TO LABELS
+ */
+.user-inputs input[type='text'], .user-inputs input[type='password'], .user-inputs input[type='number'], .user-inputs select {
+  border: 0;
+}
+.pseudo-disabled, .pseudo-readonly {
+  background-color: #e9ecef;
+}
+
+/*
+ *  HERE THERE BE NEW / TEMPORARY STYLES...
+ */
+.user-inputs .container {
+  padding: 0;
+}
+.user-inputs .container .row .col-6: {
+  padding-left: 8 !important;
+  padding-right: 8 !important;
+}
+.custom-checkbox .form-control {
+  border: 0;
+}
+select {
+  margin-left: 4px;
+}
+
+th a.sort-link:first-of-type {
+  margin-left: 5px;
+}
+.sort-link {
+  display: inline-block;
+  padding-left: 0px;
+  padding-right: 0px;
+  cursor: pointer;
+}
+th a[sort-direction="desc"] {
+  transform: rotate(180deg);
+}
+
+/*
+ *  HIDE SPINNERS - https://www.codexworld.com/how-to/remove-arrows-spinner-from-number-input-css/
+ */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
+    margin: 0; 
+}
+input[type=number] {
+    -moz-appearance:textfield;
+}
