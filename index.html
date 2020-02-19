@@ -42,9 +42,11 @@
         $( '#export-footer' ).change(function(){apiData.export_footer=$(this).prop('checked');}).change();
         $( '.required-input' ).change(function() { checkInputs(this); }).keyup(function() { checkInputs(this); });
         // Buttons...
+        $( 'nav svg' ).click(function() { getHelp(); });
         $( '#get-data' ).click(function() { stateTransition(0); });
         $( '#halt-get-data' ).click(function() { $('#kill-switch').prop("checked",true); });
         $( '#export-data' ).click(function() { exportData(); });
+        $( '#select-waf-services' ).click(function() { selectWafServices(); });
         $( '#clear-data' ).click(function() { clearData(); });
         $( '#reload-page' ).click(function() { location.reload(); });
         // Tables...
@@ -62,6 +64,7 @@
           <img src="/img/fastly/white_stopwatch_60x60.png" alt="">
           <span>Get Origin Bandwidth</span>
         </a>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M12 2c5.514 0 10 4.486 10 10s-4.486 10-10 10-10-4.486-10-10 4.486-10 10-10zm0-2c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm1.25 17c0 .69-.559 1.25-1.25 1.25-.689 0-1.25-.56-1.25-1.25s.561-1.25 1.25-1.25c.691 0 1.25.56 1.25 1.25zm1.393-9.998c-.608-.616-1.515-.955-2.551-.955-2.18 0-3.59 1.55-3.59 3.95h2.011c0-1.486.829-2.013 1.538-2.013.634 0 1.307.421 1.364 1.226.062.847-.39 1.277-.962 1.821-1.412 1.343-1.438 1.993-1.432 3.468h2.005c-.013-.664.03-1.203.935-2.178.677-.73 1.519-1.638 1.536-3.022.011-.924-.284-1.719-.854-2.297z"/></svg>
       </nav>
     </header>
     <section class="user-inputs">
@@ -195,8 +198,8 @@
                     <label class="col-sm-4 col-form-label bg-light border-right">Adjust for Shielding</label>
                     <div class="col-sm-8 px-2">
                       <select class="form-control selectpicker" id="shieldingMultiplier">
-                        <option value="1">Count all Shield Node origin bandwidth</option>
-                        <option value="0.5" selected>Count half of Shield Node origin bandwidth</option>
+                        <option value="1">Count all of the origin bandwidth</option>
+                        <option value="0.5" selected>Count half of the origin bandwidth</option>
                       </select>
                     </div>
               </div>
@@ -207,9 +210,9 @@
             <div class="col-6 px-3">
                 <div class="form-group mx-0 row border rounded">
                     <label class="col-sm-4 col-form-label bg-light border-right">Export Footer</label>
-                    <div class="col-sm-8 px-2">
+                    <div class="col-sm-8 px-2 pseudo-disabled-hack">
                       <div class="custom-control custom-checkbox">
-                        <div class="form-control">
+                        <div class="form-control pseudo-disabled-hack">
                           <input type="checkbox" class="custom-control-input" id="export-footer" checked>
                           <label class="custom-control-label" for="export-footer">Append summary information</label>
                         </div>
@@ -227,6 +230,7 @@
         <div class="col text-center">
           <button type="button" class="btn btn-primary normally-not-hidden" id="get-data" disabled>Get Data</button>
           <button type="button" class="btn btn-danger hidden" id="halt-get-data">Halt Getting Data</button>
+          <button type="button" class="btn btn-secondary normally-not-hidden" id="select-waf-services">Select WAF Services</button>
           <button type="button" class="btn btn-secondary normally-not-hidden" id="export-data">Export Selected Data</button>
           <button type="button" class="btn btn-secondary normally-not-hidden" id="clear-data">Clear Data</button>
           <button type="button" class="btn btn-secondary normally-not-hidden" id="reload-page">Reload Page</button>
@@ -255,6 +259,13 @@
                 <th scope="col" class="average abbreviated">Average Total Origin Bandwidth</th>
                 <th scope="col" class="average comma-separated">Average Total Origin Bandwidth</th>
                 <th scope="col" class="average integer">Average Total Origin Bandwidth</th>
+                <th scope="col" csv>Count of WAFs Selected</th>
+                <th scope="col" class="total-waf abbreviated">Total WAF Bandwidth</th>
+                <th scope="col" class="total-waf comma-separated">Total WAF Bandwidth</th>
+                <th scope="col" class="total-waf integer">Total WAF Bandwidth</th>
+                <th scope="col" class="average-waf abbreviated">Average Total WAF Bandwidth</th>
+                <th scope="col" class="average-waf comma-separated">Average Total WAF Bandwidth</th>
+                <th scope="col" class="average-waf integer">Average Total WAF Bandwidth</th>
               </tr>
             </thead>
             <tbody>
@@ -266,6 +277,13 @@
                 <td class="average integer">Column 5</td>
                 <td class="average abbreviated">Column 6</td>
                 <td class="average comma-separated">Column 7</td>
+                <td class="count-waf" csv>Column 8</td>
+                <td class="total-waf integer">Column 9</td>
+                <td class="total-waf abbreviated">Column 10</td>
+                <td class="total-waf comma-separated">Column 11</td>
+                <td class="average-waf integer">Column 12</td>
+                <td class="average-waf abbreviated">Column 13</td>
+                <td class="average-waf comma-separated">Column 14</td>
               </tr>
             </tbody>
           </table>
@@ -288,6 +306,7 @@
                 <th scope="col" class="average comma-separated">Average Origin Bandwidth</th>
                 <th scope="col" class="average integer">Average Origin Bandwidth</th>
                 <th scope="col" sort-field="shielding" csv>Shielding</th>
+                <th scope="col" sort-field="waf" csv>WAF</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -304,7 +323,7 @@
     </button>
     <!-- The Modal -->
     <div class="modal fade" id="myModal">
-      <div class="modal-dialog">
+      <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header">
             <h4 class="modal-title">Modal Heading</h4>
@@ -319,14 +338,34 @@
         </div>
       </div>
     </div>
-    <!-- Optional JavaScript -->
-    <!-- jQuery first, then Popper.js, then Bootstrap JS, then others... -->
-    <!--
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.15.0/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
-    -->
+    <div id="help-content" class="hidden">
+      <h5>
+        Basic usage:
+      </h5>
+      <ol>
+        <li>Enter your Fastly <strong>API Key</strong> - an "admin", "engineer", or "superuser" role is needed</li>
+        <li>Select the <strong>Input ID Type</strong> to either get the bandwidth for a specified Service or all Services for a specified Customer</li>
+        <li>Enter a <strong>Service ID</strong> or <strong>Customer ID</strong> based on selection from the previous step</li>
+        <li>Click the "Get Data" button to, well, get data</li>
+        <li>Use the selection checkboxes in the first column of the data table to include or exclude a Service's bandwidth in the bandwidth totals</li>
+        <li>Click the "Export Selected Data" button to save data to a CSV file</li>
+      </ol>
+      <h5>
+        Optional adjustments:
+      </h5>
+      <ul>
+        <li>Change the date range of the data by changing the <strong>From Date</strong> and <strong>To Date</strong></li>
+        <li>Average your bandwidth by setting the <strong>Average Divisor</strong>, e.g. set the date range to 2 months and then set the <strong>Average Divisor</strong> to "2" to get a rough monthly average</li>
+        <li>Change the <strong>Adjust for Shielding</strong> setting so that origin bandwidth is not "double counted" when Shielding is configured on a Service</li>
+        <li>Change the <strong>Append summary information</strong> setting to include or exclude the tool settings at the bottom of your CSV export file</li>
+        <li>Click the "Select WAF Services" button to only select the WAF enabled Services</li>
+      </ul>
+      <h5>Display settings:</h5>
+      <ul>
+        <li>Change the <strong>Bandwidth Format</strong> setting to control how the bandwidth value is displayed</li>
+        <li>Click the up or down arrows in the data table header row to sort the data by that columns value in ascending or descending order, respectively</li>
+      </ul>
+    </div>
     <script src="/js/jquery.min.js"></script>
     <script src="/js/popper.min.js"></script>
     <script src="/js/bootstrap.min.js"></script>
