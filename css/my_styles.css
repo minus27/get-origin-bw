@@ -135,6 +135,10 @@ th a.sort-link:first-of-type {
 th a[sort-direction="desc"] {
   transform: rotate(180deg);
 }
+.flip {
+  display: inline-block;
+  transform: rotate(180deg);
+}
 
 /*
  *  HIDE SPINNERS - https://www.codexworld.com/how-to/remove-arrows-spinner-from-number-input-css/
@@ -148,7 +152,11 @@ input[type=number] {
     -moz-appearance:textfield;
 }
 
-nav svg {
+nav img {
   cursor: pointer;
-  fill: white;
+}
+
+.banner-content {
+  text-align: center;
+  font-weight: bold;
 }
