@@ -1,6 +1,6 @@
 var DEBUG = false;
 var SAVE_STATS_DATA = false;
-var apiData = {}, statData = {totals:{},stats:{},data:{}}, svcData=[];
+var apiData = {}, statData = {totals:{},stats:{},data:{}}, svcData=[], tmpSvcData=[];
 var apiCallCounter = 0;
 function isObject(value) {
   return value && typeof value === 'object' && value.constructor === Object;
@@ -31,7 +31,11 @@ function addDays(date, days) {
   result.setDate(result.getDate() + days);
   return result;
 }
-function bootstrapAlert(txtTitle, txtBody) {
+function bootstrapAlert(txtTitle, txtBody, bGoLarge = false) {
+  if (bGoLarge)
+    $( '.modal-dialog' ).addClass('modal-lg');
+  else
+    $( '.modal-dialog' ).removeClass('modal-lg');
   $('.modal-title').html(txtTitle);
   $('.modal-body').html(txtBody);
   $('#modal-button').click();
@@ -78,6 +82,29 @@ function getServiceInfo(nextState) {
     } else {
       xhrError({401:'Bad API Key',404:'Bad Service ID'},xhr.status);
       console.log(`getServiceInfo():  HTTP Error (Status = ${xhr.status})`);
+    }
+	});
+}
+function getServiceDetails(nextState) {
+  var url = `https://${location.hostname}/service/SERVICE_ID/details?service_id=${apiData.service_id}`;
+  makeApiXhr("GET", url, null, function(xhr) {
+		if (xhr.status === 200) {
+      var responseData = JSON.parse(xhr.responseText);
+      //console.log(JSON.stringify(responseData,null,"  "));
+      try {
+        tmpSvcData.backendShieldCount = responseData.active_version.backends.filter( be => be.shield!=null && be.shield!='').length;
+      } catch(err) {
+        tmpSvcData.backendShieldCount = 0;
+      }
+      try {
+        tmpSvcData.wafCount = responseData.active_version.wafs.length;
+      } catch(err) {
+        tmpSvcData.wafCount = 0;
+      }
+      stateTransition(nextState);
+    } else {
+      xhrError({401:'Bad API Key',404:'Bad Service ID'},xhr.status);
+      console.log(`getServiceDetails():  HTTP Error (Status = ${xhr.status})`);
     }
 	});
 }
@@ -187,6 +214,9 @@ function getCsvData() {
     csvData.push(csvFormat(["Services Selected:",`${$('#service-data tbody tr td input:checked').length} of ${$('#service-data tbody tr').length}`]));
     csvData.push(csvFormat(["Total Origin Bandwidth:",`${$('#service-totals td.total.comma-separated').text()} bytes (${$('#service-totals td.total.abbreviated').text()})`]));
     csvData.push(csvFormat(["Average Total Origin Bandwidth:",`${$('#service-totals td.average.comma-separated').text()} bytes (${$('#service-totals td.average.abbreviated').text()})`]));
+    csvData.push(csvFormat(["WAFs Selected:",`${$('#service-data tbody tr td.waf input:checked').length} of ${$('#service-data tbody tr td.waf input').length}`]));
+    csvData.push(csvFormat(["Total Origin Bandwidth:",`${$('#service-totals td.total-waf.comma-separated').text()} bytes (${$('#service-totals td.total-waf.abbreviated').text()})`]));
+    csvData.push(csvFormat(["Average Total Origin Bandwidth:",`${$('#service-totals td.average-waf.comma-separated').text()} bytes (${$('#service-totals td.average-waf.abbreviated').text()})`]));
     csvData.push(csvFormat(["Average Divisor:",`${apiData.average_divisor}`]));
     csvData.push(csvFormat(["Bandwidth Adjusted for Shielding:",`${(apiData.shielding_multiplier==1)?"No":"Yes"}`]));
     csvData.push(csvFormat(["Date Range:",`${$('#fromDate').val()} to ${$('#toDate').val()}`]));
@@ -223,7 +253,7 @@ function clearData() {
   progressBar.resetAll();
   $('#service-data tbody').html('');
   $('#output').html('');
-  updateServiceTotals(0,0,true);
+  updateServiceTotals(0,0,0,0,true);
   $('.input-id-type-dependent[readonly]').val('');
 }
 function changeBytesFormat() {
@@ -237,25 +267,36 @@ function changeBytesFormat() {
     }
   });
 }
-function updateRowBandwidthValues(rowSelector,totalBytes) {
+function formatBytes(formatType,bytes) {
+  switch(formatType) {
+    case 'integer': return bytes;
+    case 'abbreviated': return byteFormat(bytes);
+    case 'comma-separated': return commaFormat(bytes);
+  }
+  throw new Error(`formatBytes(): Unknown format type "${formatType}"`);
+}
+function updateRowBandwidthValues(rowSelector,totalBytes,totalWafBytes) {
   let shieldingMultiplier = 1;
   if (typeof totalBytes == "undefined") {
     totalBytes = Number( $(`${rowSelector} .total.integer`).attr('total-bytes') );
+    totalWafBytes = ($(`${rowSelector} .waf`).text() != "") ? totalBytes : 0;
     if ($('#shieldingMultiplier').val() != "1" && $(`${rowSelector} .shielding`).text() != "") {
       shieldingMultiplier = Number( $('#shieldingMultiplier').val() );
     }
   }
-  let adjustedBytes = Math.round( totalBytes * shieldingMultiplier );
+  let adjustedBytes = Math.round( totalBytes * shieldingMultiplier ),
+      averageAdjustedBytes = Math.round( adjustedBytes / apiData.average_divisor ),
+      adjustedWafBytes = Math.round( totalWafBytes * shieldingMultiplier ),
+      averageAdjustedWafBytes = Math.round( adjustedWafBytes / apiData.average_divisor );
   
-  $(`${rowSelector} .total.integer`).text( adjustedBytes );
-  $(`${rowSelector} .total.abbreviated`).text( byteFormat(adjustedBytes) );
-  $(`${rowSelector} .total.comma-separated`).text( commaFormat(adjustedBytes) );
-  
-  let averageAdjustedBytes = Math.round( adjustedBytes / apiData.average_divisor );
-  
-  $(`${rowSelector} .average.integer`).text( averageAdjustedBytes );
-  $(`${rowSelector} .average.abbreviated`).text( byteFormat(averageAdjustedBytes) );
-  $(`${rowSelector} .average.comma-separated`).text( commaFormat(averageAdjustedBytes) );
+  ['integer','abbreviated','comma-separated'].forEach(function(formatType){
+    $(`${rowSelector} .total.${formatType}`).text( formatBytes(formatType,adjustedBytes) );
+    $(`${rowSelector} .average.${formatType}`).text( formatBytes(formatType,averageAdjustedBytes) );
+    if (rowSelector.startsWith('#service-totals')) {
+      $(`${rowSelector} .total-waf.${formatType}`).text( formatBytes(formatType,adjustedWafBytes) );
+      $(`${rowSelector} .average-waf.${formatType}`).text( formatBytes(formatType,averageAdjustedWafBytes) );
+    }
+  });
 }
 function updateSelectedServices(e) {
   if (typeof e !== "undefined") {
@@ -263,16 +304,21 @@ function updateSelectedServices(e) {
       $( 'td .select-service' ).prop('checked',$( 'th .select-service' ).prop('checked'));
     }
   }
-  let newCount = 0, newBytes = 0;;
+  let newCount = 0, newBytes = 0, newWafCount = 0, newWafBytes = 0;
   $( 'td .select-service:checked' ).each(function(){
     ++newCount;
     let className = this.parentElement.parentElement.className;
     let bShielding = ($(`#service-data tbody tr.${className} td.shielding`).text()!="");
+    let bWaffing = ($(`#service-data tbody tr.${className} td.waf`).text()!="");
     let shieldingMultiplier = parseFloat((bShielding) ? apiData.shielding_multiplier : 1);
-    newBytes += Math.round(parseInt($(`#service-data tbody tr.${className} td.total.integer`).attr('total-bytes'))*shieldingMultiplier);
+    let tmpBytes = Math.round(parseInt($(`#service-data tbody tr.${className} td.total.integer`).attr('total-bytes'))*shieldingMultiplier)
+    newBytes += tmpBytes;
+    if (bWaffing) newWafBytes += tmpBytes;
+    if (bWaffing) newWafCount += 1;
   });
-  $('#service-totals td.count').text( newCount );
-  updateRowBandwidthValues('#service-totals tbody',newBytes);
+  //$('#service-totals td.count').text( newCount );
+  //updateRowBandwidthValues('#service-totals tbody',newBytes);
+  updateServiceTotals(newCount,newBytes,newWafCount,newWafBytes,true);
 }
 function updateDataTables() {
   $('#service-data tbody td.total.integer').each(function(){
@@ -321,13 +367,18 @@ function addServiceData(arrData) {
   });
   eTr.className = `row${document.querySelectorAll('#service-data tbody tr').length}`;
   $('#service-data tbody')[0].appendChild(eTr);
+  if (arrData.filter(datum => datum.name == 'shielding' && datum.value == 'X').length !=0) $('#service-data tbody tr:last-of-type td:first-of-type').addClass('shielding');
+  if (arrData.filter(datum => datum.name == 'waf' && datum.value == 'X').length !=0) $('#service-data tbody tr:last-of-type td:first-of-type').addClass('waf');
 }
-function updateServiceTotals(count, bytes, reset) {
+function updateServiceTotals(count, bytes, wafCount, wafBytes, reset) {
   reset = (typeof reset === "boolean") ? reset : false;
   let newCount = count + ((reset) ? 0 : Number($('#service-totals td.count').text()));
+  let newWafCount = wafCount + ((reset) ? 0 : Number($('#service-totals td.count-waf').text()));
   $('#service-totals td.count').text( newCount );
+  $('#service-totals td.count-waf').text( newWafCount );
   let newBytes = bytes + ((reset) ? 0 : Number($('#service-totals td.total.integer').text()));
-  updateRowBandwidthValues('#service-totals tbody',newBytes);
+  let newWafBytes = wafBytes + ((reset) ? 0 : Number($('#service-totals td.total-waf.integer').text()));
+  updateRowBandwidthValues('#service-totals tbody',newBytes,newWafBytes);
 }
 
 var progressBar = {
@@ -377,6 +428,11 @@ function disableControlsWhileGettingData(bGettingData) {
       $( `.user-inputs ${tag}` ).parent().parent().removeClass(`pseudo-disabled`);
     }
   });
+  if (bGettingData) {
+    $( `.pseudo-disabled-hack` ).addClass(`pseudo-disabled`);
+  } else {
+    $( `.pseudo-disabled-hack` ).removeClass(`pseudo-disabled`);
+  }
   $( '#service-data input' ).prop('disabled', bGettingData);
   if (bGettingData) {
     $( '.normally-not-hidden' ).hide();
@@ -457,7 +513,7 @@ function stateTransition(state,nextState) {
     case 2:
       if (DEBUG) console.log(`${state}: Initializing Service variables...`);
       if (progressBar.init("customer") == null) progressBar.init("customer", svcData.length);
-      let tmpSvcData = svcData.shift();
+      tmpSvcData = svcData.shift();
       $('#serviceName').val(tmpSvcData.service_name);
       if (apiData.id_type == "customer") {
         apiData.service_id = tmpSvcData.service_id;
@@ -475,7 +531,7 @@ function stateTransition(state,nextState) {
         apiCallCounter++;
         getCustomerInfo(nextState);
       }
-      getServiceStats('shield_resp_header_bytes',nextState);
+      getServiceDetails(nextState);
       getServiceStats('bereq_header_bytes',nextState);
       getServiceStats('bereq_body_bytes',nextState);
       return;
@@ -488,9 +544,9 @@ function stateTransition(state,nextState) {
       if (apiCallCounter != 0) return;
       if (DEBUG) console.log(`${state}: Post-processing data...`);
       let oStats = statData.stats[apiData.service_id],
-          oTotals = statData.totals[apiData.service_id];
-      
-      oTotals.shielding = (oStats.shield_resp_header_bytes > 0);
+          oTotals = statData.totals[apiData.service_id],
+          bShielding = (tmpSvcData.backendShieldCount > 0),
+          bWaffing = (tmpSvcData.wafCount > 0);
       
       addServiceData([
         {name: "service-id", value: apiData.service_id, csv: true},
@@ -501,16 +557,20 @@ function stateTransition(state,nextState) {
         {name: "average integer", value: ""},
         {name: "average abbreviated", value: ""},
         {name: "average comma-separated", value: ""},
-        {name: "shielding", value: ((oTotals.shielding) ? "X" : ""), csv: true},
+        {name: "shielding", value: ((bShielding) ? "X" : ""), csv: true},
+        {name: "waf", value: ((bWaffing) ? "X" : ""), csv: true},
       ]);
       let rowSelector = `#service-data tbody .row${document.querySelectorAll('#service-data tbody tr').length - 1}`;
       
       updateRowBandwidthValues( rowSelector );
       $('#bytesFormat').change();
       
-      updateServiceTotals(1, Number( $( `${rowSelector} .total.integer` ).text() ));
+      let tmpBytes = Number( $( `${rowSelector} .total.integer` ).text() );
+      updateServiceTotals(1, tmpBytes, (bWaffing)?1:0, (bWaffing)?tmpBytes:0);
       
-      oTotals.total_bytes = Number( $( `${rowSelector} .total.integer` ).text() );
+      oTotals.shielding = bShielding;
+      oTotals.waf = bWaffing;
+      oTotals.total_bytes = tmpBytes;
       oTotals.fmt_total_bytes = $( `${rowSelector} .total.comma-separated` ).text();
       oTotals.abbr_total_bytes = $( `${rowSelector} .total.abbreviated` ).text();
       $('#output').html(JSON.stringify(oTotals,null,"  "));
@@ -611,7 +671,7 @@ function sortTableData(field,order) {
   }
   const config = {
     orders: ["asc","desc"],
-    fields: ["service-id","service-name","origin-bandwidth","shielding"],
+    fields: ["service-id","service-name","origin-bandwidth","shielding","waf"],
   };
   if (!(config.fields.includes(field))) throw new Error(`sortTableData(): Unknown field "${field}"`);
   if (typeof order == "undefined") order = "asc";
@@ -625,6 +685,7 @@ function sortTableData(field,order) {
       "service-name": $(`#service-data tbody tr.${className} td.service-name`).text(),
       "origin-bandwidth": Number($(`#service-data tbody tr.${className} td.total.integer`).text()),
       "shielding": $(`#service-data tbody tr.${className} td.shielding`).text(),
+      "waf": $(`#service-data tbody tr.${className} td.waf`).text(),
     } );
   });
   tblData.sort(compareValues(field,order));
@@ -649,4 +710,22 @@ function addSortLinks() {
       sortTableData(this.parentElement.getAttribute('sort-field'),this.getAttribute('sort-direction'));
     });
   });
+}
+
+function selectWafServices() {
+  if ($('#service-data tbody tr').length == 0) {
+    bootstrapAlert('Select WAF Services Error','There is no data to select');
+    return;
+  }
+  if ($( '#service-data td.waf' ).length == 0) {
+    bootstrapAlert('Select WAF Services Error','There are no services with WAFs');
+    return;
+  }
+  $( '.select-service' ).prop('checked',false);
+  $( '#service-data td.waf input[type=checkbox]' ).prop('checked',true);
+  updateSelectedServices();
+}
+
+function getHelp() {
+  bootstrapAlert('Help',$('#help-content').html(),true);
 }
