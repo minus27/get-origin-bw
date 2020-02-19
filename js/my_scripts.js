@@ -36,6 +36,10 @@ function bootstrapAlert(txtTitle, txtBody, bGoLarge = false) {
     $( '.modal-dialog' ).addClass('modal-lg');
   else
     $( '.modal-dialog' ).removeClass('modal-lg');
+  if (txtTitle == '')
+    $( '.modal-header' ).addClass('hidden');
+  else
+    $( '.modal-header' ).removeClass('hidden');
   $('.modal-title').html(txtTitle);
   $('.modal-body').html(txtBody);
   $('#modal-button').click();
@@ -727,5 +731,5 @@ function selectWafServices() {
 }
 
 function getHelp() {
-  bootstrapAlert('Help',$('#help-content').html(),true);
+  bootstrapAlert('',$('#help-content').html(),true);
 }
