@@ -16,9 +16,16 @@
     <link rel="stylesheet" href="/css/bootstrap-datepicker.min.css" />
     <link rel="stylesheet" href="/css/my_styles.css" />
     <style type="text/css">
+      .obscure { display: none !important}
+      .not-obscured { margin: 1em; }
     </style>
     <script>
       function initialize() {
+        console.info(':-)');
+        if (location.hostname == 'get-origin-bw.global.ssl.fastly.net') {
+          $( '.obscure' ).removeClass('obscure');
+          $( '.not-obscured' ).addClass('obscure');
+        }
         // Fields...
         $( '#idType' ).change(function() { changeInputIdType(); }).change();
         $( "#fromDate" ).datepicker({
@@ -59,7 +66,10 @@
     </script>
   </head>
   <body onload="initialize()">
-    <header ip-blocked="" demo-running="false">
+    <h1 class="not-obscured">
+      Work in Progress
+    </h1>
+    <header ip-blocked="" demo-running="false" class="obscure">
       <nav class="navbar navbar-dark bg-dark">
         <a class="navbar-brand" href="#">
           <img src="/img/speedometer-white-60.svg" alt="">
@@ -68,7 +78,7 @@
         <img src="/img/help.svg">
       </nav>
     </header>
-    <section class="user-inputs">
+    <section class="user-inputs obscure">
       <div class="container">
 
         <div class="row">
@@ -226,7 +236,7 @@
 
       </div>
     </section>
-    <section>
+    <section class="obscure">
       <div class="form-group row">
         <div class="col text-center">
           <button type="button" class="btn btn-primary normally-not-hidden" id="get-data" disabled>Get Data</button>
@@ -247,7 +257,7 @@
         </div>
       </div>
     </section>
-    <section class="results hidden">
+    <section class="results hidden obscure">
       <div class="card">
         <div class="table-responsive">
           <table class="table table-bordered table-striped table-sm" id="service-totals">
@@ -291,7 +301,7 @@
         </div>
       </div>
     </section>
-    <section class="results hidden">
+    <section class="results hidden obscure">
       <div class="card">
         <div class="table-responsive">
           <table class="table table-bordered table-striped table-sm" id="service-data">
@@ -315,15 +325,15 @@
         </div>
       </div>
     </section>
-    <section class="hidden">
+    <section class="hidden obscure">
       <pre class="pre-scrollable border rounded mb-0" style="padding: 6px 12px;" id="output">&nbsp;</pre>
     </section>
     <!-- Button to Open the Modal -->
-    <button id="modal-button" type="button" class="btn btn-danger hidden bs-alert" data-toggle="modal" data-target="#myModal">
+    <button id="modal-button" type="button" class="btn btn-danger hidden bs-alert obscure" data-toggle="modal" data-target="#myModal">
       Open modal
     </button>
     <!-- The Modal -->
-    <div class="modal fade" id="myModal">
+    <div class="modal fade obscure" id="myModal">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header">
@@ -339,7 +349,7 @@
         </div>
       </div>
     </div>
-    <div id="banner-content" class="hidden">
+    <div id="banner-content obscure" class="hidden">
       <div class="banner-content">
         <p>
           FOR INTERNAL FASTLY USE ONLY
@@ -350,7 +360,7 @@
         </p>
       </div>
     </div>
-    <div id="help-content" class="hidden">
+    <div id="help-content obscure" class="hidden">
       <h5>
         Basic usage:
       </h5>

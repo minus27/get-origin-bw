@@ -105,6 +105,9 @@ function getServiceDetails(nextState) {
       } catch(err) {
         tmpSvcData.wafCount = 0;
       }
+      
+      tmpSvcData.service_name = responseData.name;
+      
       stateTransition(nextState);
     } else {
       xhrError({401:'Bad API Key',404:'Bad Service ID'},xhr.status);
@@ -113,14 +116,18 @@ function getServiceDetails(nextState) {
 	});
 }
 function getCustomerServices(nextState) {
-  var url = `https://${location.hostname}/customer/CUSTOMER_ID/services?customer_id=${apiData.customer_id}`;
+  console.log('TEST');
+  //var url = `https://${location.hostname}/customer/CUSTOMER_ID/services?customer_id=${apiData.customer_id}`;
+  var url = `https://${location.hostname}/customer/CUSTOMER_ID/service_ids?customer_id=${apiData.customer_id}`;
   makeApiXhr("GET", url, null, function(xhr) {
 		if (xhr.status === 200) {
       var responseData = JSON.parse(xhr.responseText);
       //console.log(JSON.stringify(responseData,null,"  "));
       responseData.forEach( (oSvc) => svcData.push( {
-        service_id:oSvc.id,
-        service_name:oSvc.name
+        //service_id:oSvc.id,
+        //service_name:oSvc.name
+        service_id:oSvc,
+        service_name:"-"
       } ) );
       //console.log(JSON.stringify(svcData,null,"  "));
       stateTransition(nextState);
@@ -542,6 +549,10 @@ function stateTransition(state,nextState) {
     case 4:
       --apiCallCounter;
       if (apiCallCounter != 0) return;
+      
+      $('#serviceName').val(tmpSvcData.service_name);
+      statData.totals[apiData.service_id].service_name = tmpSvcData.service_name;
+      
       stateTransition(nextState);
       return;
     case 5:
